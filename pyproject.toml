@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "bw-merge-window"
+version = "0.1.0"
+description = "A python extension for quick access to bigWig and bigBed files."
+authors = ["David Lougheed <david.lougheed@mail.mcgill.ca>"]
+license = "GPL-3.0"
+readme = "README.md"
+
+[tool.poetry.scripts]
+bw-merge-window = "bw_merge_window.entry:entry"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+numpy = "^1.26.2"
+pybigwig = "^0.3.22"
+
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.3"
+pytest-cov = "^4.1.0"
+coverage = "^7.3.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

@@ -1,0 +1,8 @@
+/.idea
+/bigWigTo*
+/*.bedGraph
+/*.bigWig
+/*.bw
+/*.wig
+
+__pycache__
