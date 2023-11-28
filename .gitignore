@@ -1,6 +1,7 @@
 /.idea
 /bigWigTo*
 /*.bedGraph
+/*.bg
 /*.bigWig
 /*.bw
 /*.wig

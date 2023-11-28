@@ -1,3 +1,4 @@
+import math
 import numpy as np
 import pyBigWig
 import re
@@ -76,18 +77,36 @@ async def merge_bigwigs(window: str, files: tuple[Path, ...], output_path: Path,
                 vals *= (range_vals[1] - range_vals[0])
                 vals += range_vals[0]
 
-            print(files[i], vals)
-
             files_values.append(vals)
 
         files_values_matrix = np.array(files_values)
 
-        files_values_matrix_avg = np.mean(files_values_matrix, axis=0)
+        # Calculate averages for each position. If a NaN is present at any point, it makes the whole average NaN:
+        files_values_matrix_avg = np.mean(files_values_matrix, axis=0).tolist()
 
         # Write the output bigWig
+
         merged_bw_h.addHeader([(contig, ref_contig_length)])
 
-        print(files_values_matrix_avg)
+        entry_starts: list[int] = []
+        entry_ends: list[int] = []
+        entry_values: list[float] = []
+
+        current_start: int = start
+        current_value: float = files_values_matrix_avg[0]
+
+        for i, v in enumerate((*files_values_matrix_avg[1:], math.nan)):  # add a NaN on the end to force final write
+            if (math.isnan(v) or (not math.isnan(v) and v != current_value)) and not math.isnan(current_value):
+                # transition from non-NaN block to NaN block
+                #  - add entry values
+                entry_starts.append(current_start)
+                entry_ends.append(start + i)
+                entry_values.append(current_value)
+                #  - switch over current values
+                current_start = start + i
+                current_value = v
+
+        merged_bw_h.addEntries([contig] * len(entry_starts), entry_starts, ends=entry_ends, values=entry_values)
 
     finally:
         for h in bw_handles:

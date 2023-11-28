@@ -18,7 +18,9 @@ async def main():
     parser.add_argument("bigWig", type=Path, nargs="+", help="One or more bigWig files to merge.")
     parser.add_argument("--output", "-o", type=Path, required=True, help="Path to write merged bigWig file to.")
     parser.add_argument(
-        "--range", "-r", type=str, help="Range for output values; if not set, raw values will be used.")
+        "--range", "-r",
+        type=str,
+        help="Range for output values, applied to each bigWig individually. If not set, raw values will be used.")
 
     args = parser.parse_args()
     await merge_bigwigs(args.window, tuple(args.bigWig), args.output, args.range)
