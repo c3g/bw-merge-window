@@ -1,3 +1,4 @@
+import functools
 import logging
 import math
 import numpy as np
@@ -47,22 +48,31 @@ def get_range_values(output_range: str | None) -> tuple[int, int] | None:
 
 
 def get_values_for_file(
-    fh: pyBigWig.pyBigWig, contig: str, start: int, end: int, range_vals: tuple[int, int] | None
+    fh: pyBigWig.pyBigWig,
+    contig: str,
+    start: int,
+    end: int,
+    range_vals: tuple[int, int] | None,
 ) -> NDArray:
     bw_header = fh.header()
     vals = fh.values(contig, start, end, numpy=True)
     if range_vals:
         # If the user has specified an output range, re-value the averaged array to be in this range
         vals -= bw_header["minVal"]
-        vals /= (bw_header["maxVal"] - bw_header["minVal"])
+        vals /= bw_header["maxVal"] - bw_header["minVal"]
         # now, vals is between 0 and 1 - get it back to be between range min/max
-        vals *= (range_vals[1] - range_vals[0])
+        vals *= range_vals[1] - range_vals[0]
         vals += range_vals[0]
     return vals
 
 
 async def merge_bigwigs(
-    window: str, files: tuple[Path, ...], output_path: Path, output_range: str | None, logger: logging.Logger
+    window: str,
+    files: tuple[Path, ...],
+    output_path: Path,
+    output_range: str | None,
+    treat_missing_as_zero: bool,
+    logger: logging.Logger,
 ):
     # Process input values ----------------------------------------------------------------
     contig, start, end = get_window_contig_start_end(window, logger)
@@ -92,7 +102,8 @@ async def merge_bigwigs(
             if ref_contig_length is not None and int_cl != ref_contig_length:
                 raise ValueError(
                     f"Encountered two reference lengths for contig {contig}: {ref_contig_length} and {int_cl}. Are "
-                    f"these bigWigs from different assemblies?")
+                    f"these bigWigs from different assemblies?"
+                )
             elif ref_contig_length is None:
                 ref_contig_length = int_cl
                 if end > ref_contig_length:
@@ -103,6 +114,9 @@ async def merge_bigwigs(
             files_values.append(get_values_for_file(h, contig, start, end, range_vals))
 
         files_values_matrix = np.array(files_values)
+
+        if treat_missing_as_zero:
+            np.nan_to_num(files_values_matrix, copy=False, nan=0.0)
 
         # Calculate averages for each position. If a NaN is present at any point, it makes the whole average NaN:
         files_values_matrix_avg = np.mean(files_values_matrix, axis=0).tolist()
@@ -118,10 +132,14 @@ async def merge_bigwigs(
         current_start: int = start
         current_value: float = files_values_matrix_avg[0]
 
+        @functools.cache
+        def _is_a_gap(f: float) -> bool:
+            return (treat_missing_as_zero and f == 0.0) or math.isnan(f)
+
         # start the enumeration at 1, since we already handled the first entry.
         # add a NaN on the end of the values list to force a final write.
         for i, v in enumerate((*files_values_matrix_avg[1:], math.nan), start + 1):
-            if (math.isnan(v) or (not math.isnan(v) and v != current_value)) and not math.isnan(current_value):
+            if (_is_a_gap(v) or (not _is_a_gap(v) and v != current_value)) and not _is_a_gap(current_value):
                 # transition from non-NaN block to NaN block
                 #  - add entry values
                 entry_starts.append(current_start)
@@ -130,14 +148,19 @@ async def merge_bigwigs(
                 #  - switch over current values
                 current_start = i
                 current_value = v
-            elif math.isnan(current_value) and not math.isnan(v):
+            elif _is_a_gap(current_value) and not _is_a_gap(v):
                 # transition from NaN block to non-NaN block - don't add any entries, since our values are undefined for
                 # the region we just passed through.
                 #  - switch over current value
                 current_start = i
                 current_value = v
 
-        merged_bw_h.addEntries([contig] * len(entry_starts), entry_starts, ends=entry_ends, values=entry_values)
+        merged_bw_h.addEntries(
+            [contig] * len(entry_starts),
+            entry_starts,
+            ends=entry_ends,
+            values=entry_values,
+        )
 
     finally:
         for h in bw_handles:

@@ -22,11 +22,12 @@ async def main(args: tuple[str, ...] | None):
         "--range", "-r",
         type=str,
         help="Range for output values, applied to each bigWig individually. If not set, raw values will be used.")
+    parser.add_argument("--treat-missing-as-zero", "-t", action="store_true")
 
     logger = get_logger()
 
     args = parser.parse_args(args)
-    await merge_bigwigs(args.window, tuple(args.bigWig), args.output, args.range, logger)
+    await merge_bigwigs(args.window, tuple(args.bigWig), args.output, args.range, args.treat_missing_as_zero, logger)
 
 
 def entry(args: tuple[str, ...] | None = None):
