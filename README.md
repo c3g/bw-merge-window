@@ -6,6 +6,12 @@ C3G `bigWigMergePlus` tool developed by Romain Grégoire.
 This is part of the core set of tools that powers the [EpiVar Browser](https://github.com/c3g/epivar-browser).
 
 
+## License
+
+Everything in this repository **EXCEPT EVERYTHING** under the `tests/` directory code is licensed under the terms of the 
+[GNU General Public License, v3.0](./LICENSE).
+
+
 ## Installation
 
 ```bash
