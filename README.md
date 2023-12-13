@@ -8,8 +8,13 @@ This is part of the core set of tools that powers the [EpiVar Browser](https://g
 
 ## License
 
-Everything in this repository **EXCEPT EVERYTHING** under the `tests/` directory code is licensed under the terms of the 
-[GNU General Public License, v3.0](./LICENSE).
+Everything in this repository **EXCEPT FOR EVERYTHING** under the `tests/bin` and `tests/data` directories is licensed 
+under the terms of the [GNU General Public License, v3.0](./LICENSE). 
+
+&copy; McGill University 2023
+
+Everything under the `tests/bin` directory is &copy; UCSC. Everything under the `tests/data` directory is from the
+IHEC Epigenomes portal and the copyright is retained by the relevant holders.
 
 
 ## Installation
