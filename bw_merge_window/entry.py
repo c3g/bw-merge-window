@@ -3,10 +3,11 @@ import asyncio
 from pathlib import Path
 
 from . import __version__
+from .logger import get_logger
 from .merge import merge_bigwigs
 
 
-async def main():
+async def main(args: tuple[str, ...] | None):
     parser = argparse.ArgumentParser(
         prog="bw-merge-window",
         description="A command-line utility for merging a window of a set of bigWigs.",
@@ -22,13 +23,15 @@ async def main():
         type=str,
         help="Range for output values, applied to each bigWig individually. If not set, raw values will be used.")
 
-    args = parser.parse_args()
-    await merge_bigwigs(args.window, tuple(args.bigWig), args.output, args.range)
+    logger = get_logger()
+
+    args = parser.parse_args(args)
+    await merge_bigwigs(args.window, tuple(args.bigWig), args.output, args.range, logger)
 
 
-def entry():
-    asyncio.run(main())
+def entry(args: tuple[str, ...] | None = None):
+    asyncio.run(main(args))
 
 
 if __name__ == "__main__":  # pragma: no cover
-    entry()
+    entry()  # run without args specified (will use sys.argv)

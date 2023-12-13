@@ -1,3 +1,4 @@
+import logging
 import math
 import numpy as np
 import pyBigWig
@@ -20,10 +21,13 @@ def int_cast_or_raise_with_msg(val: str, field: str) -> int:
         raise ValueError(f"{field} must be an integer")
 
 
-def get_window_contig_start_end(window: str) -> tuple[str, int, int]:
+def get_window_contig_start_end(window: str, logger: logging.Logger) -> tuple[str, int, int]:
     if window_match := WINDOW_FORMAT.match(window):
         contig = window_match.group(1)
         start = int_cast_or_raise_with_msg(window_match.group(2), "start")
+        if start < 0:
+            logger.warning("start should not be below 0; clamping to 0")
+            start = 0
         end = int_cast_or_raise_with_msg(window_match.group(3), "end")
         return contig, start, end
 
@@ -57,9 +61,11 @@ def get_values_for_file(
     return vals
 
 
-async def merge_bigwigs(window: str, files: tuple[Path, ...], output_path: Path, output_range: str | None):
+async def merge_bigwigs(
+    window: str, files: tuple[Path, ...], output_path: Path, output_range: str | None, logger: logging.Logger
+):
     # Process input values ----------------------------------------------------------------
-    contig, start, end = get_window_contig_start_end(window)
+    contig, start, end = get_window_contig_start_end(window, logger)
     range_vals: tuple[int, int] | None = get_range_values(output_range)
     bw_handles: tuple[pyBigWig.pyBigWig, ...] = tuple(pyBigWig.open(str(f)) for f in files)
 
@@ -89,6 +95,9 @@ async def merge_bigwigs(window: str, files: tuple[Path, ...], output_path: Path,
                     f"these bigWigs from different assemblies?")
             elif ref_contig_length is None:
                 ref_contig_length = int_cl
+                if end > ref_contig_length:
+                    logger.warning(f"end should not be above contig length, clamping to {ref_contig_length}")
+                    end = ref_contig_length
 
             # Then, compute and collect the (optionally range-ified) base-level values
             files_values.append(get_values_for_file(h, contig, start, end, range_vals))
