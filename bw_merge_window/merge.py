@@ -128,6 +128,12 @@ async def merge_bigwigs(
                 #  - switch over current values
                 current_start = start + i
                 current_value = v
+            elif math.isnan(current_value) and not math.isnan(v):
+                # transition from NaN block to non-NaN block - don't add any entries, since our values are undefined for
+                # the region we just passed through.
+                #  - switch over current value
+                current_start = start + i
+                current_value = v
 
         merged_bw_h.addEntries([contig] * len(entry_starts), entry_starts, ends=entry_ends, values=entry_values)
 
