@@ -13,15 +13,17 @@ async def main(args: tuple[str, ...] | None):
         description="A command-line utility for merging a window of a set of bigWigs.",
     )
 
-    parser.add_argument('--version', action="version", version=__version__)
+    parser.add_argument("--version", action="version", version=__version__)
 
     parser.add_argument("window", type=str, help="Window to merge: contig:start-end")
     parser.add_argument("bigWig", type=Path, nargs="+", help="One or more bigWig files to merge.")
     parser.add_argument("--output", "-o", type=Path, required=True, help="Path to write merged bigWig file to.")
     parser.add_argument(
-        "--range", "-r",
+        "--range",
+        "-r",
         type=str,
-        help="Range for output values, applied to each bigWig individually. If not set, raw values will be used.")
+        help="Range for output values, applied to each bigWig individually. If not set, raw values will be used.",
+    )
     parser.add_argument("--treat-missing-as-zero", "-t", action="store_true")
 
     logger = get_logger()
