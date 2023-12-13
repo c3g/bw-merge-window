@@ -118,21 +118,23 @@ async def merge_bigwigs(
         current_start: int = start
         current_value: float = files_values_matrix_avg[0]
 
-        for i, v in enumerate((*files_values_matrix_avg[1:], math.nan)):  # add a NaN on the end to force final write
+        # start the enumeration at 1, since we already handled the first entry.
+        # add a NaN on the end of the values list to force a final write.
+        for i, v in enumerate((*files_values_matrix_avg[1:], math.nan), start + 1):
             if (math.isnan(v) or (not math.isnan(v) and v != current_value)) and not math.isnan(current_value):
                 # transition from non-NaN block to NaN block
                 #  - add entry values
                 entry_starts.append(current_start)
-                entry_ends.append(start + i)
+                entry_ends.append(i)
                 entry_values.append(current_value)
                 #  - switch over current values
-                current_start = start + i
+                current_start = i
                 current_value = v
             elif math.isnan(current_value) and not math.isnan(v):
                 # transition from NaN block to non-NaN block - don't add any entries, since our values are undefined for
                 # the region we just passed through.
                 #  - switch over current value
-                current_start = start + i
+                current_start = i
                 current_value = v
 
         merged_bw_h.addEntries([contig] * len(entry_starts), entry_starts, ends=entry_ends, values=entry_values)
