@@ -1,24 +1,9 @@
 # Test against the software this replaces: bigWigMergePlus
-import pathlib
 import subprocess
 
 from bw_merge_window.entry import entry
 
-TEST_BIN_DIR = pathlib.Path(__file__).parent / "bin"
-TEST_DATA_DIR = pathlib.Path(__file__).parent / "data"
-TEST_OUT_DIR = pathlib.Path(__file__).parent / "out"
-
-BIGWIG_TO_BEDGRAPH_BIN = TEST_BIN_DIR / "bigWigToBedGraph.linux.x86_64"
-BIGWIG_MERGE_PLUS_BIN = TEST_BIN_DIR / "bigWigMergePlus"
-
-INPUT_FILES = [
-    TEST_DATA_DIR / "25574.Blueprint.ERS487305.RNA-Seq.signal_reverse.bigWig",
-    TEST_DATA_DIR / "25575.Blueprint.ERS487305.RNA-Seq.signal_forward.bigWig",
-    TEST_DATA_DIR / "25582.Blueprint.ERS487306.RNA-Seq.signal_reverse.bigWig",
-]
-INPUT_FILES_STR = [*map(str, INPUT_FILES)]
-
-TEST_POS = "chr1:0-500000"
+from . import shared_data as sd
 
 
 def parse_bedgraph_line(line: str) -> tuple[str, int, int, float]:
@@ -27,12 +12,12 @@ def parse_bedgraph_line(line: str) -> tuple[str, int, int, float]:
 
 
 def test_against_bwmp():
-    out_new = str(TEST_OUT_DIR / "merged-new.bw")
-    out_new_bedgraph = str(TEST_OUT_DIR / "merged-new.bedGraph")
+    out_new = str(sd.TEST_OUT_DIR / "merged-new.bw")
+    out_new_bedgraph = str(sd.TEST_OUT_DIR / "merged-new.bedGraph")
     entry(
         (
-            TEST_POS,
-            *INPUT_FILES_STR,
+            sd.TEST_POS,
+            *sd.INPUT_FILES_STR,
             "--treat-missing-as-zero",
             "--range",
             "0-1000",
@@ -40,21 +25,21 @@ def test_against_bwmp():
             out_new,
         )
     )
-    subprocess.run((str(BIGWIG_TO_BEDGRAPH_BIN), out_new, out_new_bedgraph))
+    subprocess.run((str(sd.BIGWIG_TO_BEDGRAPH_BIN), out_new, out_new_bedgraph))
 
-    out_old = str(TEST_OUT_DIR / "merged-old.bw")
-    out_old_bedgraph = str(TEST_OUT_DIR / "merged-old.bedGraph")
+    out_old = str(sd.TEST_OUT_DIR / "merged-old.bw")
+    out_old_bedgraph = str(sd.TEST_OUT_DIR / "merged-old.bedGraph")
     subprocess.run(
         (
-            str(BIGWIG_MERGE_PLUS_BIN),
+            str(sd.BIGWIG_MERGE_PLUS_BIN),
             "-range=0-1000",
             "-compress",
-            f"-position={TEST_POS}",
-            *INPUT_FILES_STR,
-            str(TEST_OUT_DIR / "merged-old.bw"),
+            f"-position={sd.TEST_POS}",
+            *sd.INPUT_FILES_STR,
+            str(sd.TEST_OUT_DIR / "merged-old.bw"),
         )
     )
-    subprocess.run((str(BIGWIG_TO_BEDGRAPH_BIN), out_old, out_old_bedgraph))
+    subprocess.run((str(sd.BIGWIG_TO_BEDGRAPH_BIN), out_old, out_old_bedgraph))
 
     with open(out_old_bedgraph, "r") as fho:
         fho_lines = fho.readlines()
