@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "bw-merge-window"
-version = "0.1.0"
+version = "0.2.0"
 description = "A python extension for quick access to bigWig and bigBed files."
 authors = ["David Lougheed <david.lougheed@mail.mcgill.ca>"]
 license = "GPL-3.0"
