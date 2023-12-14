@@ -30,6 +30,9 @@ jobs:
       - name: Test
         run: ./run_tests.bash
 
+      - name: Generate coverage JSON
+        run: python -m coverage json
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         env:
