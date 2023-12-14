@@ -11,7 +11,7 @@ from pathlib import Path
 __all__ = ["merge_bigwigs"]
 
 
-WINDOW_FORMAT = re.compile(r"^(\w+):(-?\d+)-(\d+)$")
+WINDOW_FORMAT = re.compile(r"^(\w+)(?::(-?\d+)-(\d+)?)?$")
 RANGE_FORMAT = re.compile(r"^(-?\d+)-(-?\d+)$")
 
 
@@ -22,17 +22,22 @@ def int_cast_or_raise_with_msg(val: str, field: str) -> int:
         raise ValueError(f"{field} must be an integer")
 
 
-def get_window_contig_start_end(window: str, logger: logging.Logger) -> tuple[str, int, int]:
+def get_window_contig_start_end(window: str, logger: logging.Logger) -> tuple[str, int, int | None]:
     if window_match := WINDOW_FORMAT.match(window):
         contig = window_match.group(1)
-        start = int_cast_or_raise_with_msg(window_match.group(2), "start")
+
+        start_group = window_match.group(2)
+        start: int = int_cast_or_raise_with_msg(window_match.group(2), "start") if start_group is not None else 0
         if start < 0:
             logger.warning("start should not be below 0; clamping to 0")
             start = 0
-        end = int_cast_or_raise_with_msg(window_match.group(3), "end")
+
+        end_group = window_match.group(3)
+        end = int_cast_or_raise_with_msg(end_group, "end") if end_group is not None else None
+
         return contig, start, end
 
-    raise ValueError("Malformatted window: should be contig:start-end")
+    raise ValueError("Malformatted window: should be contig, contig:start-, or contig:start-end")
 
 
 def get_range_values(output_range: str | None) -> tuple[int, int] | None:
@@ -49,6 +54,33 @@ def get_range_values(output_range: str | None) -> tuple[int, int] | None:
         if output_range:  # could not match range from input value
             raise ValueError("Malformatted output range: should be min-max")
         return None
+
+
+def get_bigwig_file_handles(files: tuple[Path, ...]) -> tuple[pyBigWig.pyBigWig, ...]:
+    return tuple(pyBigWig.open(str(f)) for f in files)
+
+
+def verify_contig_presence_and_get_length(h: pyBigWig.pyBigWig, h_idx: int, contig: str) -> int:
+    # noinspection PyArgumentList
+    if (cl := h.chroms(contig)) is not None:
+        return int(cl)
+    else:
+        raise ValueError(f"Contig {contig} not found in file at index {h_idx}")
+
+
+def get_consensus_contig_length_or_raise(handles: tuple[pyBigWig.pyBigWig, ...], contig: str):
+    if len(handles) == 0:
+        raise ValueError("At least one bigWig file must be specified")
+
+    contig_length: int = verify_contig_presence_and_get_length(handles[0], 0, contig)
+    for i, h in enumerate(handles[1:], 1):
+        if (cl := verify_contig_presence_and_get_length(h, i, contig)) != contig_length:
+            raise ValueError(
+                f"Encountered two reference lengths for contig {contig}: {contig_length} and {cl}. Are "
+                f"these bigWigs from different assemblies?"
+            )
+
+    return contig_length
 
 
 def get_values_for_file(
@@ -81,43 +113,29 @@ async def merge_bigwigs(
     # Process input values ----------------------------------------------------------------
     contig, start, end = get_window_contig_start_end(window, logger)
     range_vals: tuple[int, int] | None = get_range_values(output_range)
-    bw_handles: tuple[pyBigWig.pyBigWig, ...] = tuple(pyBigWig.open(str(f)) for f in files)
+    bw_handles: tuple[pyBigWig.pyBigWig, ...] = get_bigwig_file_handles(files)
 
     # noinspection PyArgumentList
     merged_bw_h: pyBigWig.pyBigWig = pyBigWig.open(str(output_path), "w")
     # -------------------------------------------------------------------------------------
 
     try:
-        files_values = []
-        ref_contig_length: int | None = None
+        # First, get the contig length and ensure that the contig length is consistent across every bigWig file
+        ref_contig_length: int = get_consensus_contig_length_or_raise(bw_handles, contig)
 
-        # For each bigWig, collect the base-level values
-        for i, h in enumerate(bw_handles):
-            # First, ensure that the contig length is consistent across every bigWig file
+        if end is None:
+            end = ref_contig_length
+        elif end > ref_contig_length:
+            logger.warning(f"end should not be above contig length, clamping to {ref_contig_length}")
+            end = ref_contig_length
 
-            # noinspection PyArgumentList
-            contig_length = h.chroms(contig)
-
-            if not contig_length:
-                raise ValueError(f"Contig {contig} not found in file {files[i]}")
-
-            int_cl = int(contig_length)
-
-            if ref_contig_length is not None and int_cl != ref_contig_length:
-                raise ValueError(
-                    f"Encountered two reference lengths for contig {contig}: {ref_contig_length} and {int_cl}. Are "
-                    f"these bigWigs from different assemblies?"
-                )
-            elif ref_contig_length is None:
-                ref_contig_length = int_cl
-                if end > ref_contig_length:
-                    logger.warning(f"end should not be above contig length, clamping to {ref_contig_length}")
-                    end = ref_contig_length
-
-            # Then, compute and collect the (optionally range-ified) base-level values
-            files_values.append(get_values_for_file(h, contig, start, end, range_vals))
-
-        files_values_matrix = np.array(files_values)
+        files_values_matrix = np.array(
+            tuple(
+                # For each bigWig, compute and collect the (optionally range-ified) base-level values
+                get_values_for_file(h, contig, start, end, range_vals)
+                for h in bw_handles
+            )
+        )
 
         if treat_missing_as_zero:
             np.nan_to_num(files_values_matrix, copy=False, nan=0.0)
