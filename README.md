@@ -1,5 +1,7 @@
 # bw-merge-window
 
+[![PyPI version](https://badge.fury.io/py/bw-merge-window.svg)](https://badge.fury.io/py/bw-merge-window)
+
 A command-line utility for merging and averaging a window of a set of bigWigs, inspired by/tested against the previous 
 C3G `bigWigMergePlus` tool developed by Romain Grégoire.
 
