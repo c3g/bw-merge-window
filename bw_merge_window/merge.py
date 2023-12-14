@@ -37,10 +37,14 @@ def get_window_contig_start_end(window: str, logger: logging.Logger) -> tuple[st
 
 def get_range_values(output_range: str | None) -> tuple[int, int] | None:
     if range_match := (RANGE_FORMAT.match(output_range) if output_range else None):
-        return (
-            int_cast_or_raise_with_msg(range_match.group(1), "range min"),
-            int_cast_or_raise_with_msg(range_match.group(2), "range max"),
-        )
+        range_min = int_cast_or_raise_with_msg(range_match.group(1), "range min")
+        range_max = int_cast_or_raise_with_msg(range_match.group(2), "range max")
+
+        if range_min >= range_max:
+            raise ValueError("Malformatted output range: min must be less than max")
+
+        return range_min, range_max
+
     else:
         if output_range:  # could not match range from input value
             raise ValueError("Malformatted output range: should be min-max")
