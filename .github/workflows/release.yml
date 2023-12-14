@@ -43,9 +43,14 @@ jobs:
       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
 
     steps:
-      - uses: actions/download-artifact@v3
+      - name: Download build artifact
+        uses: actions/download-artifact@v3
         with:
           name: bw-merge-window-dist
+          path: dist
+
+      - name: Check current directory
+        run: ls -la
 
       - name: Build and publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
