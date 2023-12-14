@@ -11,8 +11,8 @@ from pathlib import Path
 __all__ = ["merge_bigwigs"]
 
 
-WINDOW_FORMAT = re.compile(r"^(\w+):(\d+)-(\d+)$")
-RANGE_FORMAT = re.compile(r"^(\d+)-(\d+)$")
+WINDOW_FORMAT = re.compile(r"^(\w+):(-?\d+)-(\d+)$")
+RANGE_FORMAT = re.compile(r"^(-?\d+)-(-?\d+)$")
 
 
 def int_cast_or_raise_with_msg(val: str, field: str) -> int:
