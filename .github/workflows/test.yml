@@ -31,7 +31,7 @@ jobs:
         run: ./run_tests.bash
 
       - name: Generate coverage JSON
-        run: python -m coverage json
+        run: python -m poetry run coverage json
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
