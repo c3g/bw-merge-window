@@ -27,7 +27,7 @@ jobs:
         run: python -m poetry build
 
       - name: Store build output
-        uses: actions/upload-artifact@3
+        uses: actions/upload-artifact@v3
         id: build-upload
         with:
           name: bw-merge-window-dist
